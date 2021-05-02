@@ -59,11 +59,12 @@ class Net3(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(2, 16, kernel_size = 2)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size= 2)
-        self.fc1 = nn.Linear(64, 32)
-        self.fc2 = nn.Linear(32, 10)
-        self.fc3 = nn.Linear(20, 1)
+        self.conv1 = nn.Conv2d(2, 64, kernel_size = 2)
+        self.conv2 = nn.Conv2d(64, 128, kernel_size= 2)
+        self.fc1 = nn.Linear(256, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 10)
+        self.fc4 = nn.Linear(20, 1)
 
         self.logsoft = nn.LogSoftmax(dim=1)
 
@@ -74,16 +75,18 @@ class Net3(nn.Module):
         print(x.size())
         x = F.relu(F.max_pool2d(self.conv2(x), kernel_size = 2))
         print(x.size())
-        x = x.view(-1, 16*2*2)
+        x = x.view(-1, 64*2*2)
         print(x.size())
         x = F.relu(self.fc1(x))
         print(x.size())
         x = F.relu(self.fc2(x))
         print(x.size())
+        x = F.relu(self.fc3(x))
+        print(x.size())
         output1 = self.logsoft(x)
         x = x.view(25, 20)
         print(x.size())
-        output2 = F.relu(self.fc3(x))
+        output2 = F.relu(self.fc4(x))
 
         return output1, output2
 
@@ -111,10 +114,11 @@ for e in range(epochs):
         output1, output2 = model(train_input_norm.narrow(0, i, mini_batch_size))
         
 
-        print(output1)
+        
         loss1 = criterion1(output1, train_classes.narrow(0, i, mini_batch_size).flatten())
         print(output2)
         temp = train_target.narrow(0, i, mini_batch_size).to(torch.float32).view(25, -1)
+        print(temp)
         loss2 = criterion2(output2, temp)
         #print(loss2)
         
@@ -135,29 +139,32 @@ def compute_err_digit_recog(model, test_input_norm, test_classes): # CHANGER LES
     correct_count_digit, all_count_digit = 0, 0
     correct_count_equal, all_count_equal = 0, 0
     
-    for img, label, target, i in range(0, zip(test_input_norm, test_classes, test_target, range(len(test_classes))), mini_batch_size):   
+    for i in range(0, test_input_norm.size(), mini_batch_size):   
 
         with torch.no_grad():
-            log_probs_digits, probs_equality = model(img)
+            log_probs_digits, probs_equality = model(test_input_normnarrow(0, i, mini_batch_size))
         
         #print(torch.sigmoid(probs_equality), test_target[i])
 
 
         probs = torch.exp(log_probs_digits)
         _, preds = torch.max(probs,dim=1)
-        true_labels = test_classes[i]
+        
+        for b in range(mini_batch_size):
 
-        for predicted, groundtruth in zip(preds, true_labels):
-            if(predicted == groundtruth):
-                correct_count_digit += 1
-            #print(predicted, groundtruth)
-            all_count_digit += 1
-        
-        
-        
-        if((torch.sigmoid(probs_equality) >= 0.5 and test_target[i] == 1) or (torch.sigmoid(probs_equality) < 0.5 and test_target[i] == 0)):
-            correct_count_equal += 1
-        all_count_equal +=1
+            true_labels = test_classes[b]
+
+            for predicted, groundtruth in zip(preds, true_labels):
+                if(predicted == groundtruth):
+                    correct_count_digit += 1
+                #print(predicted, groundtruth)
+                all_count_digit += 1
+            
+            
+            
+            if((torch.sigmoid(probs_equality) >= 0.5 and test_target[i] == 1) or (torch.sigmoid(probs_equality) < 0.5 and test_target[i] == 0)):
+                correct_count_equal += 1
+            all_count_equal +=1
         
 
     print("Number Of Images Tested =", all_count_digit)
