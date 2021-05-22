@@ -11,7 +11,6 @@ from torch.nn import functional as F
 train_input, train_target, train_classes, test_input, test_target, test_classes = generate_pair_sets(
     1000)
 
-
 train_input_norm = (train_input - torch.min(train_input)) / (torch.max(train_input))
 test_input_norm = (test_input - torch.min(train_input)) / (torch.max(train_input))
 
@@ -64,7 +63,7 @@ def compute_err_digit_recog(model, test_input, test_classes, batches = False):
             true_labels = test_classes.narrow(0, b, mini_batch_size)
             targets = test_target.narrow(0, b, mini_batch_size)
             
-            
+            print(preds, true_labels)
             
             for predicted, groundtruth in zip(preds, true_labels):
                 if(predicted[0] == groundtruth[0]):
@@ -74,8 +73,9 @@ def compute_err_digit_recog(model, test_input, test_classes, batches = False):
                 all_count_digit += 2
                
             for prob_equality, target in zip(probs_equality.view(-1), targets):
-                if((torch.sigmoid(prob_equality) >= 0.5 and target == 1) or 
-                           (torch.sigmoid(prob_equality) < 0.5 and target == 0)):
+                float_target = target.to(torch.float32)
+                float_prob = prob_equality.to(torch.float32)
+                if(float_prob == float_target):
                     correct_count_equal += 1
                 all_count_equal +=1
             
@@ -126,7 +126,7 @@ class ConvoLogic(nn.Module):
         probs = torch.exp(x)
         _, preds = torch.max(probs,dim=2)
         for i in range(0, len(preds)):
-            if preds[i][0] <= preds[i][1]:
+            if preds[i][0] > preds[i][1]:
                 output2[i] = 0
             else:
                 output2[i] = 1
@@ -152,7 +152,6 @@ for e in range(epochs):
 
         optimizer.zero_grad()
         output1, output2 = model(train_input.narrow(0, b, mini_batch_size))
-        print(output2)
         
         loss = criterion(output1.view(-1, 10), train_classes.narrow(0, b, mini_batch_size).view(-1))
 
