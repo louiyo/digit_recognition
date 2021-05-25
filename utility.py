@@ -13,6 +13,12 @@ def get_n_params(model):
         pp += nn
     return pp
 
+#There are three different function that compute the test accuracy, as some of our networks do not output exactly the same way, therefore need
+#different ways of computig it
+
+
+#The networks using an auxilliary loss have two outputs, one being the actual numbers outputed via a 10 features channel that determines the number via a LogSoftMax function
+#and another that gives out 1 feature, the probability of the output being one
 def compute_err_auxlosses(model, test_input, test_classes, test_target, batches, mini_batch_size):
 
     correct_count_digit, all_count_digit = 0, 0
@@ -77,6 +83,9 @@ def compute_err_auxlosses(model, test_input, test_classes, test_target, batches,
 
     return mod_accuracy_dig, mod_accuracy_cla
 
+
+#The Logic network has a comparison embedded, therefore has the same first output as the auxilliary losses networks, but the second one is directly 1 or 0,
+#therefore does not need the final sigmoid to determine the probability
 def compute_err_logic(model, test_input, test_classes, test_target, batches, mini_batch_size):
 
 
@@ -144,6 +153,8 @@ def compute_err_logic(model, test_input, test_classes, test_target, batches, min
 
     return all_count_digit, mod_accuracy_dig, all_count_equal, mod_accuracy_cla
 
+
+#The classifier Network directly outputs the probablity of the class being one, therefore only needs this sigmoid and not the digits determination
 def compute_err_classif(model, test_input, test_classes, test_target, batches, mini_batch_size):
 
     correct_count_equal, all_count_equal = 0, 0
@@ -183,6 +194,8 @@ def compute_err_classif(model, test_input, test_classes, test_target, batches, m
 
     return all_count_equal, mod_accuracy_cla
 
+
+#With this function, we compute the performances of networks using an auxilliary loss over 10 trainings of the model
 def compute_performances_auxilliary(model, criterion1, criterion2, train_input, train_classes, train_target, test_input, 
                                             test_classes, test_target, batches = False, mini_batch_size = 25):
         
@@ -199,7 +212,9 @@ def compute_performances_auxilliary(model, criterion1, criterion2, train_input, 
     print("Average Digit Recognition Test Accuracy: ", dig_acc_sum/10)
     print("Average Classification Test Accuracy: ", cla_acc_sum/10)
 
-def compute_performances(model, criterion, train_input, train_target, train_classes, test_input, test_target, test_classes, batches = False, mini_batch_size = 25):
+
+#This function has the same function as the auxilliary one, but only need one criterion
+def compute_performances(model, criterion, train_input, train_target, train_classes, test_input, test_target, test_classes, batches = False, mini_batch_size = 25, ):
 
 
     dig_acc_sum = 0   
@@ -225,6 +240,8 @@ def compute_performances(model, criterion, train_input, train_target, train_clas
 
     return model
 
+
+#This function trains a model with the given criterion
 def model_train(model, criterion, train_input, train_target):
 
     optimizer = optim.SGD(model.parameters(), lr=0.006, momentum=0.8)
@@ -252,6 +269,8 @@ def model_train(model, criterion, train_input, train_target):
          
     return model
 
+
+#This function trains a model that needs an auxilliary loss
 def model_train_auxlosses(model, criterion1, criterion2, train_input, train_classes, train_target):
 
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.8)
