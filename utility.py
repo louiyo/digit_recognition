@@ -40,7 +40,6 @@ def compute_err_auxlosses(model, test_input, test_classes, test_target, batches,
                     correct_count_digit += 1
                 all_count_digit += 1
 
-
             if((torch.sigmoid(probs_equality) > 0.5 and target == 1) or 
                        (torch.sigmoid(probs_equality) <= 0.5 and target == 0)):
                 correct_count_equal += 1
@@ -67,9 +66,10 @@ def compute_err_auxlosses(model, test_input, test_classes, test_target, batches,
                     correct_count_digit += 1
                 all_count_digit += 2
                
+            
             for prob_equality, target in zip(probs_equality.view(-1), targets):
-                if((torch.sigmoid(prob_equality) >= 0.5 and target == 1) or 
-                           (torch.sigmoid(prob_equality) < 0.5 and target == 0)):
+                if((prob_equality >= 0.5 and target == 1) or 
+                           (prob_equality < 0.5 and target == 0)):
                     correct_count_equal += 1
                 all_count_equal +=1
     
@@ -166,7 +166,7 @@ def compute_err_classif(model, test_input, test_classes, test_target, batches, m
             with torch.no_grad():
                 probs_equality = model(img)
 
-            if((torch.sigmoid(probs_equality) > 0.5 and target == 1) or 
+            if((probs_equality > 0.5 and target == 1) or 
                        (torch.sigmoid(probs_equality) <= 0.5 and target == 0)):
                 correct_count_equal += 1
             all_count_equal +=1
@@ -196,35 +196,49 @@ def compute_err_classif(model, test_input, test_classes, test_target, batches, m
 
 
 #With this function, we compute the performances of networks using an auxilliary loss over 10 trainings of the model
-def compute_performances_auxilliary(model, criterion1, criterion2, train_input, train_classes, train_target, test_input, 
-                                            test_classes, test_target, batches = False, mini_batch_size = 25):
+def compute_performances_auxilliary(model, criterion1, criterion2, train_input, train_classes, 
+                                    train_target, test_input, test_classes, test_target, verbose = False,
+                                    batches = False, mini_batch_size = 25, lr = 1e-4, mom = 0.95):
         
     dig_acc_sum = 0   
     cla_acc_sum = 0  
-
+    
+    print("Beginning evaluation of model...")
+    
     for i in range(0, 10):
 
-        model = model_train_auxlosses(model, criterion1, criterion2, train_input, train_classes, train_target)
-        dig_temp, cla_temp = compute_err_auxlosses(model, test_input, test_classes, test_target, batches, mini_batch_size)
+        model = model_train_auxlosses(model, criterion1, criterion2, train_input, 
+                              train_classes, train_target, lr = lr, mom = mom, verbose = verbose)
+        dig_temp, cla_temp = compute_err_auxlosses(model, test_input, test_classes, 
+                              test_target, batches, mini_batch_size)
+        print("Training ",i+1,"/10 complete")
         dig_acc_sum += dig_temp
         cla_acc_sum += cla_temp
     
-    print("Average Digit Recognition Test Accuracy: ", dig_acc_sum/10)
+    print("\nAverage Digit Recognition Test Accuracy: ", dig_acc_sum/10)
     print("Average Classification Test Accuracy: ", cla_acc_sum/10)
 
 
 #This function has the same function as the auxilliary one, but only need one criterion
-def compute_performances(model, criterion, train_input, train_target, train_classes, test_input, test_target, test_classes, batches = False, mini_batch_size = 25, ):
+def compute_performances(model, criterion, train_input, train_classes, 
+                        train_target, test_input, test_classes, test_target, verbose = False,
+                        batches = False, mini_batch_size = 25, lr = 1e-4, mom = 0.95):
 
 
     dig_acc_sum = 0   
     cla_acc_sum = 0 
 
+    print("Beginning evaluation of model...")
+    
     for i in range(0, 10):
-
-        dig_temp, cla_temp = compute_err_logic(model, test_input, test_classes, test_target, batches, mini_batch_size)
+        model = model_train(model, criterion, train_input, 
+                            train_target, lr = lr, mom = mom, verbose = verbose)
+        dig_temp, cla_temp = compute_err_logic(model, test_input, test_classes,
+                                               test_target, batches, mini_batch_size)
         dig_acc_sum += dig_temp
         cla_acc_sum += cla_temp
+        print("Training ",i+1,"/10 complete")
+        
     
     print("Average Digit Recognition Test Accuracy: ", dig_acc_sum/10)
     print("Average Classification Test Accuracy: ", cla_acc_sum/10)
@@ -233,7 +247,8 @@ def compute_performances(model, criterion, train_input, train_target, train_clas
 
     for i in range(0, 10):
 
-        dig_temp, cla_temp = compute_err_classif(model, test_input, test_classes, test_target, batches, mini_batch_size)
+        dig_temp, cla_temp = compute_err_classif(model, test_input, test_classes,
+                                                 test_target, batches, mini_batch_size)
         cla_acc_sum += cla_temp
     
     print("Average Classification Test Accuracy: ", cla_acc_sum/10)
@@ -242,12 +257,16 @@ def compute_performances(model, criterion, train_input, train_target, train_clas
 
 
 #This function trains a model with the given criterion
-def model_train(model, criterion, train_input, train_target):
+def model_train(model, criterion, train_input, train_target,
+                batch_size = 25, lr=1e-4, mom = 0.95, verbose = False):
 
-    optimizer = optim.SGD(model.parameters(), lr=0.006, momentum=0.8)
+    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=mom)
     epochs = 25
-    mini_batch_size = 25
-
+    mini_batch_size = batch_size
+    
+    # ici on devrait avoir pour le convo logic un seul output a gérer par nllloss
+    # cependant on a 2 outputs dans celui-ci
+    
     for e in range(epochs):
         time0 = time()
         running_loss = 0
@@ -255,28 +274,29 @@ def model_train(model, criterion, train_input, train_target):
 
 
             optimizer.zero_grad()
-            output= model(train_input.narrow(0, b, mini_batch_size))
+            output, _ = model(train_input.narrow(0, b, mini_batch_size))
             
-            loss = criterion(output.view(-1), train_target.narrow(0, b, mini_batch_size).to(torch.float32))
-
+            loss = criterion(output.view(-1, 1), train_target.narrow(0, b, mini_batch_size).to(torch.float32))
+            
             loss.backward()
             optimizer.step()
 
             running_loss += loss
-
-        print("Epoch {} - Training loss: {}".format(e+1, running_loss/len(train_input)))
-        print("\nTraining Time =", round(time()-time0, 2), "seconds")     
+        if verbose:
+            print("Epoch {} - Training loss: {}".format(e+1, running_loss/len(train_input)))
+            print("\nTraining Time =", round(time()-time0, 2), "seconds")     
          
     return model
 
 
 #This function trains a model that needs an auxilliary loss
-def model_train_auxlosses(model, criterion1, criterion2, train_input, train_classes, train_target):
+def model_train_auxlosses(model, criterion1, criterion2, train_input, 
+                          train_classes, train_target, batch_size = 25, lr=1e-4, mom = 0.95, verbose = False):
 
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.8)
+    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=mom)
     epochs = 25
 
-    mini_batch_size = 25
+    mini_batch_size = batch_size
 
     for e in range(epochs):
 
@@ -301,7 +321,7 @@ def model_train_auxlosses(model, criterion1, criterion2, train_input, train_clas
 
 
             running_loss += loss1.item() + loss2.item() * w2
-
-        print("Epoch {} - Training loss: {}".format(e+1, running_loss/len(train_input)))
-        print("\nTraining Time =", round(time()-time0, 2), "seconds")
+        if verbose:
+            print("Epoch {} - Training loss: {}".format(e+1, running_loss/len(train_input)))
+            print("\nTraining Time =", round(time()-time0, 2), "seconds")
     return model

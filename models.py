@@ -48,13 +48,15 @@ class Net_Convo_AuxLosses(nn.Module):
         # (25, 1)
         return output1, output2
     
-    
+# optimal parameters:
+# lr = 7.5e-3, batch_size = 10
 class Net_FC(nn.Module):
     
     def __init__(self):
         super().__init__()
-        self.fc0 = nn.Flatten()
+        self.fc0 = nn.Flatten(2)
         self.fc1 = nn.Linear(196, 128)
+        self.bn1 = nn.BatchNorm1d(num_features=2)
         self.fc2 = nn.Linear(128, 64)
         self.fc3 = nn.Linear(64, 32)
         self.dropout = nn.Dropout(0.2)
@@ -68,8 +70,7 @@ class Net_FC(nn.Module):
         # INPUT IS A (2, 14, 14) TENSOR, OUTPUT IS (1)
         x = self.fc0(x)
         # (2, 196)
-        x = F.relu(self.fc1(x))
-        x = self.dropout(x)
+        x = F.relu(self.bn1(self.fc1(x)))
         x = F.relu(self.fc2(x))
         x = self.dropout(x)
         x = F.relu(self.fc3(x))
@@ -77,8 +78,8 @@ class Net_FC(nn.Module):
         output1 = self.logsoft(x)
         
         x = F.relu(self.fc5(x))
-        x = x.view(-1)
-        output2 = self.fc6(x)
+        x = x.view(-1, 2)
+        output2 = torch.sigmoid(self.fc6(x))
         
         return output1, output2
 
@@ -160,9 +161,9 @@ class Net_Convo_Logic(nn.Module):
         _, preds = torch.max(probs,dim=2)
         for i in range(0, len(preds)):
             if preds[i][0] > preds[i][1]:
-                output2[i] = 0
+                output2[i] = 0.
             else:
-                output2[i] = 1
+                output2[i] = 1.
             # (25, 1)
         return output1, output2
         
