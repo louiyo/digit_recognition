@@ -121,11 +121,11 @@ def compute_err_logic(model, test_input, test_classes, test_target, batches, min
         for i in range(0, len(test_input), mini_batch_size):
         
             with torch.no_grad():
-                log_probs_digits, probs_equality = model(test_input.narrow(0, b, mini_batch_size))
+                log_probs_digits, probs_equality = model(test_input.narrow(0, i, mini_batch_size))
             probs = torch.exp(log_probs_digits)
             _, preds = torch.max(probs,dim=2)
-            true_labels = test_classes.narrow(0, b, mini_batch_size)
-            targets = test_target.narrow(0, b, mini_batch_size)
+            true_labels = test_classes.narrow(0, i, mini_batch_size)
+            targets = test_target.narrow(0, i, mini_batch_size)
             
             print(preds, true_labels)
             
@@ -151,7 +151,7 @@ def compute_err_logic(model, test_input, test_classes, test_target, batches, min
     print("Number Of Inequalities tested =", all_count_equal)
     print("\nModel Accuracy =", mod_accuracy_cla)
 
-    return all_count_digit, mod_accuracy_dig, all_count_equal, mod_accuracy_cla
+    return mod_accuracy_dig, mod_accuracy_cla
 
 
 #The classifier Network directly outputs the probablity of the class being one, therefore only needs this sigmoid and not the digits determination
@@ -231,10 +231,8 @@ def compute_performances(model, criterion, train_input, train_classes,
     print("Beginning evaluation of model...")
     
     for i in range(0, 10):
-        model = model_train(model, criterion, train_input, 
-                            train_target, lr = lr, mom = mom, verbose = verbose)
-        dig_temp, cla_temp = compute_err_logic(model, test_input, test_classes,
-                                               test_target, batches, mini_batch_size)
+        model = model_train(model, criterion, train_input, train_classes, lr = lr, mom = mom, verbose = verbose)
+        dig_temp, cla_temp = compute_err_logic(model, test_input, test_classes, test_target, batches, mini_batch_size)
         dig_acc_sum += dig_temp
         cla_acc_sum += cla_temp
         print("Training ",i+1,"/10 complete")
@@ -257,7 +255,7 @@ def compute_performances(model, criterion, train_input, train_classes,
 
 
 #This function trains a model with the given criterion
-def model_train(model, criterion, train_input, train_target,
+def model_train(model, criterion, train_input, train_classes,
                 batch_size = 25, lr=1e-4, mom = 0.95, verbose = False):
 
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=mom)
@@ -276,7 +274,8 @@ def model_train(model, criterion, train_input, train_target,
             optimizer.zero_grad()
             output, _ = model(train_input.narrow(0, b, mini_batch_size))
             
-            loss = criterion(output.view(-1, 1), train_target.narrow(0, b, mini_batch_size).to(torch.float32))
+ 
+            loss = criterion(output.view(-1, 10), train_classes.narrow(0, b, mini_batch_size).view(-1))
             
             loss.backward()
             optimizer.step()
@@ -308,7 +307,8 @@ def model_train_auxlosses(model, criterion1, criterion2, train_input,
 
             optimizer.zero_grad()
             output1, output2 = model(train_input.narrow(0, b, mini_batch_size))
-            
+            print(output1)
+
             loss1 = criterion1(output1.view(-1, 10), train_classes.narrow(0, b, mini_batch_size).view(-1))
             loss2 = criterion2(output2.view(-1), train_target.narrow(0, b, mini_batch_size).to(torch.float32))
 
