@@ -19,61 +19,39 @@ def get_n_params(model):
 
 #The networks using an auxilliary loss have two outputs, one being the actual numbers outputed via a 10 features channel that determines the number via a LogSoftMax function
 #and another that gives out 1 feature, the probability of the output being one
-def compute_err_auxlosses(model, test_input, test_classes, test_target, batches, mini_batch_size):
+def compute_err_auxlosses(model, test_input, test_classes, test_target, mini_batch_size):
 
     model.eval()
     
     correct_count_digit, all_count_digit = 0, 0
     correct_count_equal, all_count_equal = 0, 0
-    
-    if not batches:
-    
-        for img, label, target in zip(test_input, test_classes, test_target):   
-            with torch.no_grad():
-                log_probs_digits, probs_equality = model(img)
+   
+
+    for i in range(0, len(test_input), mini_batch_size):
+
+        with torch.no_grad():
+            log_probs_digits, probs_equality = model(test_input.narrow(0, i, mini_batch_size))
+
+        probs = torch.exp(log_probs_digits)
+        _, preds = torch.max(probs,dim=2)
+        true_labels = test_classes.narrow(0, i, mini_batch_size)
+        targets = test_target.narrow(0, i, mini_batch_size)
 
 
-            probs = torch.exp(log_probs_digits)
-            _, preds = torch.max(probs,dim=1)
-            true_labels = label
 
-            for predicted, groundtruth in zip(preds, true_labels):
-                if(predicted == groundtruth):
-                    correct_count_digit += 1
-                all_count_digit += 1
+        for predicted, groundtruth in zip(preds, true_labels):
+            if(predicted[0] == groundtruth[0]):
+                correct_count_digit += 1
+            if(predicted[1] == groundtruth[1]):
+                correct_count_digit += 1
+            all_count_digit += 2
 
-            if((torch.sigmoid(probs_equality) > 0.5 and target == 1) or 
-                       (torch.sigmoid(probs_equality) <= 0.5 and target == 0)):
+
+        for prob_equality, target in zip(probs_equality.view(-1), targets):
+            if((prob_equality >= 0.5 and target == 1) or 
+                       (prob_equality < 0.5 and target == 0)):
                 correct_count_equal += 1
             all_count_equal +=1
-            
-    else:
-
-        for i in range(0, len(test_input), mini_batch_size):
-        
-            with torch.no_grad():
-                log_probs_digits, probs_equality = model(test_input.narrow(0, i, mini_batch_size))
-
-            probs = torch.exp(log_probs_digits)
-            _, preds = torch.max(probs,dim=2)
-            true_labels = test_classes.narrow(0, i, mini_batch_size)
-            targets = test_target.narrow(0, i, mini_batch_size)
-            
-            
-            
-            for predicted, groundtruth in zip(preds, true_labels):
-                if(predicted[0] == groundtruth[0]):
-                    correct_count_digit += 1
-                if(predicted[1] == groundtruth[1]):
-                    correct_count_digit += 1
-                all_count_digit += 2
-               
-            
-            for prob_equality, target in zip(probs_equality.view(-1), targets):
-                if((prob_equality >= 0.5 and target == 1) or 
-                           (prob_equality < 0.5 and target == 0)):
-                    correct_count_equal += 1
-                all_count_equal +=1
     
     mod_accuracy_dig = correct_count_digit/all_count_digit
     mod_accuracy_cla = correct_count_equal/all_count_equal
@@ -88,63 +66,38 @@ def compute_err_auxlosses(model, test_input, test_classes, test_target, batches,
 
 #The Logic network has a comparison embedded, therefore has the same first output as the auxilliary losses networks, but the second one is directly 1 or 0,
 #therefore does not need the final sigmoid to determine the probability
-def compute_err_logic(model, test_input, test_classes, test_target, batches, mini_batch_size):
+def compute_err_logic(model, test_input, test_classes, test_target, mini_batch_size):
 
     model.eval()
 
     correct_count_digit, all_count_digit = 0, 0
     correct_count_equal, all_count_equal = 0, 0
     
-    if not batches:
-    
-    
-        for img, label, target, i in zip(test_input, test_classes, 
-                                                test_target, range(len(test_classes))):   
-            with torch.no_grad():
-                log_probs_digits, probs_equality = model(img)
+   
+    for i in range(0, len(test_input), mini_batch_size):
 
-            probs = torch.exp(log_probs_digits)
-            _, preds = torch.max(probs,dim=1)
-            true_labels = label
+        with torch.no_grad():
+            log_probs_digits, probs_equality = model(test_input.narrow(0, i, mini_batch_size))
+        probs = torch.exp(log_probs_digits)
+        _, preds = torch.max(probs,dim=2)
+        true_labels = test_classes.narrow(0, i, mini_batch_size)
+        targets = test_target.narrow(0, i, mini_batch_size)
 
-            for predicted, groundtruth in zip(preds, true_labels):
-                if(predicted == groundtruth):
-                    correct_count_digit += 1
-                all_count_digit += 1
+        print(preds, true_labels)
 
+        for predicted, groundtruth in zip(preds, true_labels):
+            if(predicted[0] == groundtruth[0]):
+                correct_count_digit += 1
+            if(predicted[1] == groundtruth[1]):
+                correct_count_digit += 1
+            all_count_digit += 2
 
-            if((torch.sigmoid(probs_equality) > 0.5 and target == 1) or 
-                       (torch.sigmoid(probs_equality) <= 0.5 and target == 0)):
+        for prob_equality, target in zip(probs_equality.view(-1), targets):
+            float_target = target.to(torch.float32)
+            float_prob = prob_equality.to(torch.float32)
+            if(float_prob == float_target):
                 correct_count_equal += 1
             all_count_equal +=1
-            
-            
-    else:
-
-        for i in range(0, len(test_input), mini_batch_size):
-        
-            with torch.no_grad():
-                log_probs_digits, probs_equality = model(test_input.narrow(0, i, mini_batch_size))
-            probs = torch.exp(log_probs_digits)
-            _, preds = torch.max(probs,dim=2)
-            true_labels = test_classes.narrow(0, i, mini_batch_size)
-            targets = test_target.narrow(0, i, mini_batch_size)
-            
-            print(preds, true_labels)
-            
-            for predicted, groundtruth in zip(preds, true_labels):
-                if(predicted[0] == groundtruth[0]):
-                    correct_count_digit += 1
-                if(predicted[1] == groundtruth[1]):
-                    correct_count_digit += 1
-                all_count_digit += 2
-               
-            for prob_equality, target in zip(probs_equality.view(-1), targets):
-                float_target = target.to(torch.float32)
-                float_prob = prob_equality.to(torch.float32)
-                if(float_prob == float_target):
-                    correct_count_equal += 1
-                all_count_equal +=1
             
     mod_accuracy_dig = correct_count_digit/all_count_digit
     mod_accuracy_cla = correct_count_equal/all_count_equal    
@@ -158,38 +111,23 @@ def compute_err_logic(model, test_input, test_classes, test_target, batches, min
 
 
 #The classifier Network directly outputs the probablity of the class being one, therefore only needs this sigmoid and not the digits determination
-def compute_err_classif(model, test_input, test_classes, test_target, batches, mini_batch_size):
+def compute_err_classif(model, test_input, test_classes, test_target, mini_batch_size):
 
     model.eval()
     correct_count_equal, all_count_equal = 0, 0
     
-    if not batches:
-    
-    
-        for img, target, i in zip(test_input, test_target, range(len(test_classes))):   
-            with torch.no_grad():
-                probs_equality = model(img)
+    for i in range(0, len(test_input), mini_batch_size):
 
-            if((probs_equality > 0.5 and target == 1) or 
-                       (torch.sigmoid(probs_equality) <= 0.5 and target == 0)):
+        with torch.no_grad():
+            probs_equality = model(test_input.narrow(0, i, mini_batch_size))
+
+        targets = test_target.narrow(0, i, mini_batch_size)
+
+        for prob_equality, target in zip(probs_equality.view(-1), targets):
+            if((torch.sigmoid(prob_equality) >= 0.5 and target == 1) or 
+                       (torch.sigmoid(prob_equality) < 0.5 and target == 0)):
                 correct_count_equal += 1
             all_count_equal +=1
-            
-            
-    else:
-
-        for i in range(0, len(test_input), mini_batch_size):
-        
-            with torch.no_grad():
-                probs_equality = model(test_input.narrow(0, i, mini_batch_size))
-            
-            targets = test_target.narrow(0, i, mini_batch_size)
-               
-            for prob_equality, target in zip(probs_equality.view(-1), targets):
-                if((torch.sigmoid(prob_equality) >= 0.5 and target == 1) or 
-                           (torch.sigmoid(prob_equality) < 0.5 and target == 0)):
-                    correct_count_equal += 1
-                all_count_equal +=1
 
     mod_accuracy_cla = correct_count_equal/all_count_equal 
 
@@ -202,7 +140,7 @@ def compute_err_classif(model, test_input, test_classes, test_target, batches, m
 #With this function, we compute the performances of networks using an auxilliary loss over 10 trainings of the model
 def compute_performances_auxilliary(model, criterion1, criterion2, train_input, train_classes, 
                                     train_target, test_input, test_classes, test_target, verbose = False,
-                                    batches = False, mini_batch_size = 25, lr = 1e-4, mom = 0.95):
+                                    mini_batch_size = 25, lr = 1e-4, mom = 0.95):
         
     model.eval()
     dig_acc_sum = 0   
@@ -226,8 +164,8 @@ def compute_performances_auxilliary(model, criterion1, criterion2, train_input, 
 
 #This function has the same function as the auxilliary one, but only need one criterion
 def compute_performances(model, criterion, train_input, train_classes, 
-                        train_target, test_input, test_classes, test_target, logic = True, verbose = False,
-                        batches = False, mini_batch_size = 25, lr = 1e-4, mom = 0.95):
+                         train_target, test_input, test_classes, test_target, logic = True, verbose = False,
+                         mini_batch_size = 25, lr = 1e-4, mom = 0.95):
 
     print("Beginning evaluation of model...")
     if logic:
