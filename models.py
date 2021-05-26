@@ -19,7 +19,8 @@ class Net_Convo_AuxLosses(nn.Module):
             nn.ReLU())
         
         self.dropout = nn.Dropout(0.2)
-        self.lin1 = nn.Linear(3200, 10)
+        self.lin1 = nn.Linear(3200, 50)
+        self.lin12 = nn.Linear(50, 10)
         self.lin2 = nn.Linear(10, 1)
         self.lin3 = nn.Linear(2, 1)
         
@@ -33,7 +34,9 @@ class Net_Convo_AuxLosses(nn.Module):
         x = x.view(25, 2, -1)
         
         # (25, 2, 3200)
+        x = self.dropout(x)
         x = F.relu(self.lin1(x))
+        x = F.relu(self.lin12(x))
         # (25, 2, 10)
         output1 = self.logsoft(x)
         
@@ -55,16 +58,19 @@ class Net_FC(nn.Module):
     def __init__(self):
         super().__init__()
         self.fc0 = nn.Flatten(2)
-        self.fc1 = nn.Linear(196, 128)
-        self.bn1 = nn.BatchNorm1d(num_features=2)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 32)
-        self.dropout = nn.Dropout(0.2)
-        self.fc4 = nn.Linear(32, 10)
-        self.fc5 = nn.Linear(10, 1)
-        self.fc6 = nn.Linear(2, 1)
+        self.fc1 = nn.Linear(196, 256)
+        self.fc2 = nn.Linear(256, 400)
+        self.fc3 = nn.Linear(400, 256)
+        self.fc4 = nn.Linear(256, 128)
+        self.fc5 = nn.Linear(128, 32)
+        self.fc6 = nn.Linear(32, 10)
+        self.fc7 = nn.Linear(10, 1)
+        self.fc8 = nn.Linear(2, 1)
         
-        self.logsoft = nn.LogSoftmax(dim=1)
+        self.dropout = nn.Dropout(0.2)
+        self.bn1 = nn.BatchNorm1d(num_features=2)
+        self.logsoft = nn.LogSoftmax(dim=1) 
+    
     
     def forward(self, x):
         # INPUT IS A (2, 14, 14) TENSOR, OUTPUT IS (1)
@@ -75,11 +81,13 @@ class Net_FC(nn.Module):
         x = self.dropout(x)
         x = F.relu(self.fc3(x))
         x = F.relu(self.fc4(x))
+        x = F.relu((self.fc5(x)))
+        x = F.relu((self.fc6(x)))
         output1 = self.logsoft(x)
         
-        x = F.relu(self.fc5(x))
+        x = F.relu(self.bn1(self.fc7(x)))
         x = x.view(-1, 2)
-        output2 = torch.sigmoid(self.fc6(x))
+        output2 = torch.sigmoid(self.fc8(x))
         
         return output1, output2
 
