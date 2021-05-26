@@ -57,9 +57,9 @@ def compute_err_auxlosses(model, test_input, test_classes, test_target, mini_bat
     mod_accuracy_cla = correct_count_equal/all_count_equal
             
     print("Number Of Images Tested =", all_count_digit)
-    print("\nModel Accuracy =", mod_accuracy_dig, '\n\n')
+    print("DC Accuracy =", mod_accuracy_dig, '\n')
     print("Number Of Inequalities tested =", all_count_equal)
-    print("\nModel Accuracy =", mod_accuracy_cla)
+    print("Model Accuracy =", mod_accuracy_cla, '\n','-'*50,'\n')
 
     return mod_accuracy_dig, mod_accuracy_cla
 
@@ -103,9 +103,9 @@ def compute_err_logic(model, test_input, test_classes, test_target, mini_batch_s
     mod_accuracy_cla = correct_count_equal/all_count_equal    
         
     print("Number Of Images Tested =", all_count_digit)
-    print("\nModel Accuracy =", mod_accuracy_dig, '\n\n')
+    print("DC Accuracy =", mod_accuracy_dig, '\n')
     print("Number Of Inequalities tested =", all_count_equal)
-    print("\nModel Accuracy =", mod_accuracy_cla)
+    print("Model Accuracy =", mod_accuracy_cla, '\n','-'*50,'\n')
 
     return mod_accuracy_dig, mod_accuracy_cla
 
