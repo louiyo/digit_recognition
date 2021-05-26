@@ -21,6 +21,8 @@ def get_n_params(model):
 #and another that gives out 1 feature, the probability of the output being one
 def compute_err_auxlosses(model, test_input, test_classes, test_target, batches, mini_batch_size):
 
+    model.eval()
+    
     correct_count_digit, all_count_digit = 0, 0
     correct_count_equal, all_count_equal = 0, 0
     
@@ -88,6 +90,7 @@ def compute_err_auxlosses(model, test_input, test_classes, test_target, batches,
 #therefore does not need the final sigmoid to determine the probability
 def compute_err_logic(model, test_input, test_classes, test_target, batches, mini_batch_size):
 
+    model.eval()
 
     correct_count_digit, all_count_digit = 0, 0
     correct_count_equal, all_count_equal = 0, 0
@@ -157,6 +160,7 @@ def compute_err_logic(model, test_input, test_classes, test_target, batches, min
 #The classifier Network directly outputs the probablity of the class being one, therefore only needs this sigmoid and not the digits determination
 def compute_err_classif(model, test_input, test_classes, test_target, batches, mini_batch_size):
 
+    model.eval()
     correct_count_equal, all_count_equal = 0, 0
     
     if not batches:
@@ -200,6 +204,7 @@ def compute_performances_auxilliary(model, criterion1, criterion2, train_input, 
                                     train_target, test_input, test_classes, test_target, verbose = False,
                                     batches = False, mini_batch_size = 25, lr = 1e-4, mom = 0.95):
         
+    model.eval()
     dig_acc_sum = 0   
     cla_acc_sum = 0  
     
@@ -262,6 +267,7 @@ def compute_performances(model, criterion, train_input, train_classes,
 def model_train(model, criterion, train_input, train_classes, train_target,
                 logic = True, batch_size = 25, lr=1e-4, mom = 0.95, verbose = False):
 
+    model.train()
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=mom)
     epochs = 25
     mini_batch_size = batch_size
@@ -299,6 +305,7 @@ def model_train(model, criterion, train_input, train_classes, train_target,
 def model_train_auxlosses(model, criterion1, criterion2, train_input, 
                           train_classes, train_target, batch_size = 25, lr=1e-4, mom = 0.95, verbose = False):
 
+    model.train()
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=mom)
     epochs = 25
 
