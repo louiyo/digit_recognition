@@ -177,9 +177,9 @@ def compute_err_classif(model, test_input, test_classes, test_target, batches, m
         for i in range(0, len(test_input), mini_batch_size):
         
             with torch.no_grad():
-                probs_equality = model(test_input.narrow(0, b, mini_batch_size))
+                probs_equality = model(test_input.narrow(0, i, mini_batch_size))
             
-            targets = test_target.narrow(0, b, mini_batch_size)
+            targets = test_target.narrow(0, i, mini_batch_size)
                
             for prob_equality, target in zip(probs_equality.view(-1), targets):
                 if((torch.sigmoid(prob_equality) >= 0.5 and target == 1) or 
@@ -192,7 +192,7 @@ def compute_err_classif(model, test_input, test_classes, test_target, batches, m
     print("Number Of Inequalities tested =", all_count_equal)
     print("\nModel Accuracy =", mod_accuracy_cla)
 
-    return all_count_equal, mod_accuracy_cla
+    return mod_accuracy_cla
 
 
 #With this function, we compute the performances of networks using an auxilliary loss over 10 trainings of the model
@@ -221,42 +221,46 @@ def compute_performances_auxilliary(model, criterion1, criterion2, train_input, 
 
 #This function has the same function as the auxilliary one, but only need one criterion
 def compute_performances(model, criterion, train_input, train_classes, 
-                        train_target, test_input, test_classes, test_target, verbose = False,
+                        train_target, test_input, test_classes, test_target, logic = True, verbose = False,
                         batches = False, mini_batch_size = 25, lr = 1e-4, mom = 0.95):
 
-
-    dig_acc_sum = 0   
-    cla_acc_sum = 0 
-
     print("Beginning evaluation of model...")
-    
-    for i in range(0, 10):
-        model = model_train(model, criterion, train_input, train_classes, lr = lr, mom = mom, verbose = verbose)
-        dig_temp, cla_temp = compute_err_logic(model, test_input, test_classes, test_target, batches, mini_batch_size)
-        dig_acc_sum += dig_temp
-        cla_acc_sum += cla_temp
-        print("Training ",i+1,"/10 complete")
+    if logic:
+
+        dig_acc_sum = 0   
+        cla_acc_sum = 0 
         
-    
-    print("Average Digit Recognition Test Accuracy: ", dig_acc_sum/10)
-    print("Average Classification Test Accuracy: ", cla_acc_sum/10)
+        for i in range(0, 10):
+            model = model_train(model, criterion, train_input, train_classes, train_target, lr = lr, mom = mom, verbose = verbose)
+            dig_temp, cla_temp = compute_err_logic(model, test_input, test_classes, test_target, batches, mini_batch_size)
+            dig_acc_sum += dig_temp
+            cla_acc_sum += cla_temp
+            print("Training ",i+1,"/10 complete")
+            
+        
+        print("Average Digit Recognition Test Accuracy: ", dig_acc_sum/10)
+        print("Average Classification Test Accuracy: ", cla_acc_sum/10)
 
-    cla_acc_sum = 0 
+    else:
 
-    for i in range(0, 10):
+        cla_acc_sum = 0 
 
-        dig_temp, cla_temp = compute_err_classif(model, test_input, test_classes,
-                                                 test_target, batches, mini_batch_size)
-        cla_acc_sum += cla_temp
-    
-    print("Average Classification Test Accuracy: ", cla_acc_sum/10)
+        for i in range(0, 10):
+            
+            model = model_train(model, criterion, train_input, train_classes ,train_target, logic = False, lr = lr, mom = mom, verbose = verbose)
+            cla_temp = compute_err_classif(model, test_input, test_classes,
+                                                    test_target, batches, mini_batch_size)
+            cla_acc_sum += cla_temp
+            print("Training ",i+1,"/10 complete")
+        
+        print("Average Classification Test Accuracy: ", cla_acc_sum/10)
 
     return model
 
 
 #This function trains a model with the given criterion
-def model_train(model, criterion, train_input, train_classes,
-                batch_size = 25, lr=1e-4, mom = 0.95, verbose = False):
+def model_train(model, criterion, train_input, train_classes, train_target,
+                logic = True, batch_size = 25, lr=1e-4, mom = 0.95, verbose = False):
 
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=mom)
     epochs = 25
@@ -272,10 +276,13 @@ def model_train(model, criterion, train_input, train_classes,
 
 
             optimizer.zero_grad()
-            output, _ = model(train_input.narrow(0, b, mini_batch_size))
-            
- 
-            loss = criterion(output.view(-1, 10), train_classes.narrow(0, b, mini_batch_size).view(-1))
+            if logic:
+                output, _ = model(train_input.narrow(0, b, mini_batch_size))
+                loss = criterion(output.view(-1, 10), train_classes.narrow(0, b, mini_batch_size).view(-1))
+            else:
+                
+                output = model(train_input.narrow(0, b, mini_batch_size))
+                loss = criterion(output.view(-1), train_target.narrow(0, b, mini_batch_size).to(torch.float32))
             
             loss.backward()
             optimizer.step()

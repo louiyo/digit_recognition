@@ -36,4 +36,15 @@ model = Net_Convo_Logic()
 criterion1 = nn.NLLLoss()
 compute_performances(model, criterion1, train_input, train_classes, 
                         train_target, test_input, test_classes, test_target,
-                        batches = True, mini_batch_size = 25, lr = 1e-3, mom = 0.95)
+                        logic = True, batches = True, mini_batch_size = 25, lr = 1e-3, mom = 0.95)
+
+
+"""
+
+model = Net_Conv_Classification()
+criterion1 = nn.BCEWithLogitsLoss()
+compute_performances(model, criterion1, train_input, train_classes, 
+                        train_target, test_input, test_classes, test_target,
+                        logic = False, batches = True, mini_batch_size = 25, lr = 1e-3, mom = 0.95)
+
+"""
