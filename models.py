@@ -52,7 +52,7 @@ class Net_Convo_AuxLosses(nn.Module):
         return output1, output2
     
 # optimal parameters:
-# lr = 7.5e-3, batch_size = 10
+# lr = 1e-3, batch_size = 10
 class Net_FC(nn.Module):
     
     def __init__(self):
@@ -61,9 +61,9 @@ class Net_FC(nn.Module):
         self.fc1 = nn.Linear(196, 256)
         self.fc2 = nn.Linear(256, 400)
         self.fc3 = nn.Linear(400, 256)
-        self.fc4 = nn.Linear(256, 128)
-        self.fc5 = nn.Linear(128, 32)
-        self.fc6 = nn.Linear(32, 10)
+        self.fc4 = nn.Linear(256, 100)
+        self.fc5 = nn.Linear(100, 20)
+        self.fc6 = nn.Linear(20, 10)
         self.fc7 = nn.Linear(10, 1)
         self.fc8 = nn.Linear(2, 1)
         
@@ -77,12 +77,12 @@ class Net_FC(nn.Module):
         x = self.fc0(x)
         # (2, 196)
         x = F.relu(self.bn1(self.fc1(x)))
-        x = F.relu(self.fc2(x))
+        x = F.relu(self.bn1(self.fc2(x)))
         x = self.dropout(x)
-        x = F.relu(self.fc3(x))
-        x = F.relu(self.fc4(x))
-        x = F.relu((self.fc5(x)))
-        x = F.relu((self.fc6(x)))
+        x = F.relu(self.bn1(self.fc3(x)))
+        x = F.relu(self.bn1(self.fc4(x)))
+        x = F.relu(self.bn1(self.fc5(x)))
+        x = F.relu(self.bn1(self.fc6(x)))
         output1 = self.logsoft(x)
         
         x = F.relu(self.bn1(self.fc7(x)))
